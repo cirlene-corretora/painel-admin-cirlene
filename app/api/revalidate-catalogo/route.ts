@@ -11,10 +11,11 @@ export async function POST(req: NextRequest) {
     await sincronizarCatalogo(slug);
 
     return NextResponse.json({ success: true, revalidated: true });
-  } catch (error: any) {
-    console.error("Erro na revalidação:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Erro na revalidação:", err);
     return NextResponse.json(
-      { error: error.message || "Erro ao acionar revalidação" },
+      { error: err.message || "Erro ao acionar revalidação" },
       { status: 500 }
     );
   }

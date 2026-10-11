@@ -166,9 +166,10 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
       );
 
       setFotos((prev) => [...prev, ...novasFotos]);
-    } catch (err: any) {
-      console.error("Erro no upload:", err);
-      setErro(err.message || "Erro ao enviar mídia para o Cloudflare R2");
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error("Erro no upload:", error);
+      setErro(error.message || "Erro ao enviar mídia para o Cloudflare R2");
     } finally {
       setEnviandoFotos(false);
       e.target.value = "";
@@ -325,9 +326,10 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         router.push("/admin");
         router.refresh();
       }, 1200);
-    } catch (err: any) {
-      console.error("Erro ao salvar imóvel:", err);
-      setErro(err.message || "Erro ao salvar imóvel no Supabase.");
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error("Erro ao salvar imóvel:", error);
+      setErro(error.message || "Erro ao salvar imóvel no Supabase.");
     } finally {
       setSalvando(false);
     }

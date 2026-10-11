@@ -42,10 +42,11 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, uploads });
-  } catch (error: any) {
-    console.error("Erro na API de upload R2:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("Erro na API de upload R2:", err);
     return NextResponse.json(
-      { error: error.message || "Falha ao enviar arquivo para o Cloudflare R2" },
+      { error: err.message || "Falha ao enviar arquivo para o Cloudflare R2" },
       { status: 500 }
     );
   }
