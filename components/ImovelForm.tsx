@@ -871,7 +871,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {fotos.map((f, index) => {
-              const url = getUrlPublicaR2(f.key);
+              const url = getUrlPublicaR2(f.key, 480);
               return (
                 <div
                   key={`${f.key}-${index}`}
@@ -886,6 +886,13 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
                       src={url}
                       alt={f.alt || "Foto"}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src =
+                          "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&auto=format&fit=crop&q=80";
+                      }}
                     />
 
                     {f.is_capa && (

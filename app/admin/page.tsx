@@ -107,6 +107,37 @@ export default function PainelAdminPage() {
     setDeletandoId(null);
   };
 
+  // Alterar ordem de exibição rapidamente
+  const alterarOrdem = async (imovel: ImovelCompleto, delta: number) => {
+    const ordemAtual = typeof imovel.ordem === "number" ? imovel.ordem : 0;
+    const novaOrdem = Math.max(0, ordemAtual + delta);
+    if (novaOrdem === ordemAtual) return;
+
+    // Atualização otimista
+    setImoveis((prev) =>
+      prev
+        .map((i) => (i.id === imovel.id ? { ...i, ordem: novaOrdem } : i))
+        .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+    );
+
+    const supabase = getSupabaseBrowserClient();
+    const { error } = await supabase
+      .from("imoveis")
+      .update({ ordem: novaOrdem })
+      .eq("id", imovel.id);
+
+    if (error) {
+      console.error("Erro ao alterar ordem:", error);
+      carregarImoveis();
+    } else {
+      mostrarSucesso(`Posição de "${imovel.titulo}" ajustada para #${novaOrdem}.`);
+      fetch("/api/revalidate-catalogo", {
+        method: "POST",
+        body: JSON.stringify({ slug: imovel.slug }),
+      }).catch(() => {});
+    }
+  };
+
   // Subcategorias disponíveis para a categoria selecionada
   const subcategoriasDisponiveis = useMemo(() => {
     if (filtroCategoria === "todas") return [];
@@ -337,8 +368,8 @@ export default function PainelAdminPage() {
             const fotoCapa =
               imovel.fotos?.find((f) => f.is_capa) || imovel.fotos?.[0];
             const fotoUrl = fotoCapa
-              ? getUrlPublicaR2(fotoCapa.key)
-              : "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80";
+              ? getUrlPublicaR2(fotoCapa.key, 480)
+              : "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80";
 
             return (
               <div
@@ -356,6 +387,12 @@ export default function PainelAdminPage() {
                     alt={imovel.titulo}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src =
+                        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80";
+                    }}
                   />
 
                   {/* Badges sobre a foto */}
@@ -460,6 +497,34 @@ export default function PainelAdminPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       </a>
+                    </div>
+
+                    {/* Ajuste Rápido de Posição / Ordem */}
+                    <div
+                      className="flex items-center gap-1.5 bg-espresso/80 border border-ouro/25 rounded-lg px-2 py-1 text-xs"
+                      title="Posição na vitrine. Menores números aparecem primeiro."
+                    >
+                      <span className="text-[0.6875rem] text-creme-mutado font-mono">
+                        #{imovel.ordem ?? 0}
+                      </span>
+                      <div className="flex flex-col">
+                        <button
+                          type="button"
+                          onClick={() => alterarOrdem(imovel, -1)}
+                          className="text-[0.6rem] text-creme/60 hover:text-ouro-claro leading-none p-0.5 cursor-pointer transition-colors"
+                          title="Subir posição (mostrar antes)"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => alterarOrdem(imovel, 1)}
+                          className="text-[0.6rem] text-creme/60 hover:text-ouro-claro leading-none p-0.5 cursor-pointer transition-colors"
+                          title="Descer posição (mostrar depois)"
+                        >
+                          ▼
+                        </button>
+                      </div>
                     </div>
 
                     <button

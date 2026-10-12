@@ -69,12 +69,20 @@ export async function deletarDoR2(chave: string): Promise<boolean> {
 }
 
 /**
- * Retorna a URL pública completa para uma chave do R2
+ * Retorna a URL pública completa para uma chave do R2.
+ * Para fotos do acervo derivadas, anexa a resolução ideal (padrão 480px para máxima velocidade e leveza).
+ * Para fotos enviadas diretamente pelo painel (que já possuem extensão), serve diretamente.
  */
-export function getUrlPublicaR2(chave: string): string {
+export function getUrlPublicaR2(chave: string, tamanho: 480 | 768 | 1080 = 480): string {
   if (!chave) return "";
   if (chave.startsWith("http://") || chave.startsWith("https://")) {
     return chave;
   }
-  return `${publicUrl}/${chave.replace(/^\//, "")}`;
+  const limpa = chave.replace(/^\//, "");
+  // Se já tem extensão de arquivo (upload direto do painel)
+  if (/\.(jpe?g|png|webp|avif|gif)$/i.test(limpa)) {
+    return `${publicUrl}/${limpa}`;
+  }
+  // Se for chave canônica derivada no bucket R2 (ex: plaenge/pininfarina-fachada -> plaenge/pininfarina-fachada/480.webp)
+  return `${publicUrl}/${limpa}/${tamanho}.webp`;
 }
