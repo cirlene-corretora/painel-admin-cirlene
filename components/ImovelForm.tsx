@@ -387,16 +387,162 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         </div>
       )}
 
-      {/* SEÇÃO 1: Identificação & Taxonomia */}
-      <div className="bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
-        <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-          1. Identificação & Categoria
-        </h2>
+      {/* Barra de Navegação Rápida entre Seções (Sticky) */}
+      <div className="sticky top-3 z-30 bg-espresso/95 backdrop-blur-md border border-ouro-suave/80 rounded-2xl p-2 shadow-2xl flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+        <a
+          href="#secao-categoria"
+          className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-semibold text-ouro-claro bg-ouro/15 border border-ouro/30 shrink-0 hover:bg-ouro/25 transition-colors"
+        >
+          1. Categoria & Tipo
+        </a>
+        {categoria === "lancamentos" && (
+          <a
+            href="#secao-empreendimento"
+            className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-semibold text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 shrink-0 hover:bg-emerald-900/60 transition-colors"
+          >
+            🏗️ 2. Empreendimento & Obra
+          </a>
+        )}
+        <a
+          href="#secao-textos"
+          className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-medium text-creme/70 hover:text-ouro-claro hover:bg-cafe transition-colors shrink-0"
+        >
+          {categoria === "lancamentos" ? "3" : "2"}. Textos & Copy
+        </a>
+        <a
+          href="#secao-localizacao"
+          className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-medium text-creme/70 hover:text-ouro-claro hover:bg-cafe transition-colors shrink-0"
+        >
+          {categoria === "lancamentos" ? "4" : "3"}. Localização
+        </a>
+        <a
+          href="#secao-valores"
+          className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-medium text-creme/70 hover:text-ouro-claro hover:bg-cafe transition-colors shrink-0"
+        >
+          {categoria === "lancamentos" ? "5" : "4"}. Preço
+        </a>
+        <a
+          href="#secao-specs"
+          className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-medium text-creme/70 hover:text-ouro-claro hover:bg-cafe transition-colors shrink-0"
+        >
+          {categoria === "lancamentos" ? "6" : "5"}. Specs & Lazer
+        </a>
+        <a
+          href="#secao-fotos"
+          className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-medium text-creme/70 hover:text-ouro-claro hover:bg-cafe transition-colors shrink-0"
+        >
+          {categoria === "lancamentos" ? "7" : "6"}. Fotos R2
+        </a>
+        <a
+          href="#secao-publicacao"
+          className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-medium text-creme/70 hover:text-ouro-claro hover:bg-cafe transition-colors shrink-0"
+        >
+          {categoria === "lancamentos" ? "8" : "7"}. Vitrine & Ordem
+        </a>
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
+      {/* SEÇÃO 1: Categoria & Tipo de Imóvel */}
+      <div id="secao-categoria" className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ouro-suave/60 pb-4">
+          <div>
+            <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
+              1. Categoria & Tipo de Imóvel
+            </h2>
+            <p className="text-xs text-creme-mutado mt-0.5">
+              Selecione se é um novo empreendimento/lançamento ou imóvel de revenda/agro.
+            </p>
+          </div>
+          <span className="text-[0.6875rem] font-mono text-ouro-claro uppercase px-3 py-1 rounded-full bg-espresso border border-ouro/30">
+            {categoria} · {subcategoria}
+          </span>
+        </div>
+
+        {/* 4 Cards Visuais de Categoria */}
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-3">
+            Categoria Principal *
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {CATEGORIAS_CONFIG.map((cat) => {
+              const selecionada = categoria === cat.slug;
+              return (
+                <button
+                  key={cat.slug}
+                  type="button"
+                  onClick={() => {
+                    const novaCat = cat.slug;
+                    setCategoria(novaCat);
+                    const subs = getSubcategoriasPorCategoria(novaCat);
+                    if (subs.length > 0) setSubcategoria(subs[0].slug);
+                  }}
+                  className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                    selecionada
+                      ? "bg-espresso border-ouro ring-2 ring-ouro/40 text-ouro-claro shadow-lg"
+                      : "bg-cafe-leve border-ouro-suave/60 text-creme/70 hover:border-ouro/50 hover:bg-espresso/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl">
+                      {cat.slug === "lancamentos" && "🏗️"}
+                      {cat.slug === "revendas" && "🔑"}
+                      {cat.slug === "investimentos" && "💼"}
+                      {cat.slug === "fazendas" && "🌾"}
+                    </span>
+                    {selecionada && (
+                      <span className="text-[0.5625rem] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-ouro text-espresso">
+                        Ativa
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="block font-serif text-sm font-semibold text-creme">
+                      {cat.titulo}
+                    </span>
+                    <span className="block text-[0.6875rem] text-creme-mutado mt-1 line-clamp-2">
+                      {cat.slug === "lancamentos" && "Lançamentos e empreendimentos na planta / em obras"}
+                      {cat.slug === "revendas" && "Casas, apartamentos prontos e lotes avulsos"}
+                      {cat.slug === "investimentos" && "Salas corporativas, galpões e renda de locação"}
+                      {cat.slug === "fazendas" && "Fazendas de pecuária, lavoura e áreas rurais"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Subcategorias em Chips Clicáveis */}
+        <div>
+          <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-3">
+            Subcategoria de {categoria === "lancamentos" ? "Empreendimento" : "Imóvel"} *
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {subcategoriasAtuais.map((sub) => {
+              const selecionada = subcategoria === sub.slug;
+              return (
+                <button
+                  key={sub.slug}
+                  type="button"
+                  onClick={() => setSubcategoria(sub.slug)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-2 ${
+                    selecionada
+                      ? "bg-ouro text-espresso font-semibold shadow-md"
+                      : "bg-espresso/90 border border-ouro-suave/70 text-creme/80 hover:border-ouro hover:text-ouro-claro"
+                  }`}
+                >
+                  <span>{selecionada ? "✓" : "•"}</span>
+                  {sub.titulo}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Título, Artigo, Subtítulo e Slug */}
+        <div className="pt-4 border-t border-ouro-suave/60 grid grid-cols-1 sm:grid-cols-12 gap-5">
           <div className="sm:col-span-8">
             <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-              Título do Imóvel *
+              Título do Imóvel / Empreendimento *
             </label>
             <input
               type="text"
@@ -435,45 +581,6 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
             />
           </div>
 
-          <div className="sm:col-span-6">
-            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-              Categoria *
-            </label>
-            <select
-              value={categoria}
-              onChange={(e) => {
-                const novaCat = e.target.value as SlugCategoria;
-                setCategoria(novaCat);
-                const subs = getSubcategoriasPorCategoria(novaCat);
-                if (subs.length > 0) setSubcategoria(subs[0].slug);
-              }}
-              className="w-full input-luxury text-sm"
-            >
-              {CATEGORIAS_CONFIG.map((c) => (
-                <option key={c.slug} value={c.slug}>
-                  {c.titulo}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sm:col-span-6">
-            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-              Subcategoria *
-            </label>
-            <select
-              value={subcategoria}
-              onChange={(e) => setSubcategoria(e.target.value)}
-              className="w-full input-luxury text-sm"
-            >
-              {subcategoriasAtuais.map((s) => (
-                <option key={s.slug} value={s.slug}>
-                  {s.titulo}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="sm:col-span-12">
             <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
               Slug da URL (identificador único permanente) *
@@ -487,16 +594,125 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
               className="w-full input-luxury text-xs font-mono text-ouro-claro"
             />
             <p className="text-[0.6875rem] text-creme/40 mt-1">
-              Endereço no site: /imovel/{slug || "slug-do-imovel"}
+              Endereço no catálogo público: /imovel/{slug || "slug-do-imovel"}
             </p>
           </div>
         </div>
       </div>
 
-      {/* SEÇÃO 2: Copy Editorial */}
-      <div className="bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
+      {/* SEÇÃO 2: Dados do Empreendimento & Obra (Destaque para Lançamentos) */}
+      {categoria === "lancamentos" && (
+        <div
+          id="secao-empreendimento"
+          className="scroll-mt-24 bg-cafe border border-ouro/40 p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-ouro-suave/60 pb-4">
+            <div>
+              <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider flex items-center gap-2">
+                <span>🏗️</span> 2. Dados do Empreendimento & Construtora
+              </h2>
+              <p className="text-xs text-creme-mutado mt-0.5">
+                Configurações comerciais de lançamentos na planta e em obras.
+              </p>
+            </div>
+            <span className="text-[0.6875rem] uppercase font-semibold text-emerald-400 bg-emerald-950/70 border border-emerald-500/30 px-3 py-1 rounded-full">
+              Exclusivo de Lançamentos
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
+            <div className="sm:col-span-12">
+              <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
+                Incorporadora / Construtora
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {["Plaenge", "HVM", "Vanguard", "JOOY", "Aykos", "Bonsai"].map((inc) => (
+                  <button
+                    key={inc}
+                    type="button"
+                    onClick={() => setIncorporadora(inc)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      incorporadora === inc
+                        ? "bg-ouro text-espresso font-bold"
+                        : "bg-espresso border border-ouro-suave/60 text-creme/70 hover:border-ouro hover:text-ouro-claro"
+                    }`}
+                  >
+                    {inc}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={incorporadora}
+                onChange={(e) => setIncorporadora(e.target.value)}
+                placeholder="Ou digite outra incorporadora..."
+                className="w-full input-luxury text-sm"
+              />
+            </div>
+
+            <div className="sm:col-span-6">
+              <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
+                Fase / Status da Obra
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {STATUS_OBRA_CONFIG.map((s) => {
+                  const ativo = statusObra === s.valor;
+                  return (
+                    <button
+                      key={s.valor}
+                      type="button"
+                      onClick={() => setStatusObra(s.valor as StatusObra)}
+                      className={`p-2.5 rounded-xl border text-xs font-medium text-center transition-all cursor-pointer ${
+                        ativo
+                          ? "bg-ouro text-espresso font-bold border-ouro shadow"
+                          : "bg-espresso border-ouro-suave/60 text-creme/70 hover:border-ouro/50"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="sm:col-span-6 space-y-4">
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
+                  Previsão de Entrega
+                </label>
+                <input
+                  type="text"
+                  value={previsaoEntrega}
+                  onChange={(e) => setPrevisaoEntrega(e.target.value)}
+                  placeholder="Ex: Dezembro de 2028 ou Pronto para Morar"
+                  className="w-full input-luxury text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
+                  Fase de Tabela Comercial
+                </label>
+                <input
+                  type="text"
+                  value={faseTabela}
+                  onChange={(e) => setFaseTabela(e.target.value)}
+                  placeholder="Ex: Tabela Zero de Lançamento"
+                  className="w-full input-luxury text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SEÇÃO: Copy Editorial */}
+      <div
+        id="secao-textos"
+        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6"
+      >
         <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-          2. Textos e Copy Comercial
+          {categoria === "lancamentos" ? "3" : "2"}. Textos e Copy Comercial
         </h2>
 
         <div className="space-y-4">
@@ -541,10 +757,13 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         </div>
       </div>
 
-      {/* SEÇÃO 3: Localização & Preço */}
-      <div className="bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
+      {/* SEÇÃO: Localização */}
+      <div
+        id="secao-localizacao"
+        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6"
+      >
         <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-          3. Localização & Valores
+          {categoria === "lancamentos" ? "4" : "3"}. Localização
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
@@ -587,7 +806,19 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
               className="w-full input-luxury text-sm uppercase text-center"
             />
           </div>
+        </div>
+      </div>
 
+      {/* SEÇÃO: Valores & Preço */}
+      <div
+        id="secao-valores"
+        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6"
+      >
+        <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
+          {categoria === "lancamentos" ? "5" : "4"}. Preço e Valores
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
           <div className="sm:col-span-6">
             <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
               Valor / Preço (R$)
@@ -620,10 +851,13 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         </div>
       </div>
 
-      {/* SEÇÃO 4: Especificações & Comodidades */}
-      <div className="bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
+      {/* SEÇÃO: Especificações & Comodidades */}
+      <div
+        id="secao-specs"
+        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6"
+      >
         <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-          4. Especificações & Comodidades
+          {categoria === "lancamentos" ? "6" : "5"}. Especificações & Comodidades
         </h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
@@ -758,77 +992,16 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         </div>
       </div>
 
-      {/* SEÇÃO 5: Dados de Lançamento (se aplicável) */}
-      <div className="bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
-        <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-          5. Dados de Lançamento & Obra
-        </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-5">
-          <div className="sm:col-span-6">
-            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-              Incorporadora / Construtora
-            </label>
-            <input
-              type="text"
-              value={incorporadora}
-              onChange={(e) => setIncorporadora(e.target.value)}
-              placeholder="Ex: Plaenge, HVM, Vanguard, JOOY"
-              className="w-full input-luxury text-sm"
-            />
-          </div>
-
-          <div className="sm:col-span-6">
-            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-              Status da Obra
-            </label>
-            <select
-              value={statusObra}
-              onChange={(e) => setStatusObra(e.target.value as StatusObra)}
-              className="w-full input-luxury text-sm"
-            >
-              {STATUS_OBRA_CONFIG.map((s) => (
-                <option key={s.valor} value={s.valor}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sm:col-span-6">
-            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-              Previsão de Entrega
-            </label>
-            <input
-              type="text"
-              value={previsaoEntrega}
-              onChange={(e) => setPrevisaoEntrega(e.target.value)}
-              placeholder="Ex: Dezembro de 2028"
-              className="w-full input-luxury text-sm"
-            />
-          </div>
-
-          <div className="sm:col-span-6">
-            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-              Fase de Tabela (Escassez Honesta)
-            </label>
-            <input
-              type="text"
-              value={faseTabela}
-              onChange={(e) => setFaseTabela(e.target.value)}
-              placeholder="Ex: Tabela de Lançamento"
-              className="w-full input-luxury text-sm"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* SEÇÃO 6: Galeria de Fotos & Mídia (Cloudflare R2) */}
-      <div className="bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
+      {/* SEÇÃO: Galeria de Fotos & Mídia (Cloudflare R2) */}
+      <div
+        id="secao-fotos"
+        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-              6. Fotos e Vídeos (Cloudflare R2)
+              {categoria === "lancamentos" ? "7" : "6"}. Fotos e Vídeos (Cloudflare R2)
             </h2>
             <p className="text-xs text-creme-mutado mt-1">
               As imagens e vídeos são gravados diretamente no bucket R2 e vinculados ao imóvel.
@@ -947,10 +1120,13 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         )}
       </div>
 
-      {/* SEÇÃO 7: Visibilidade & Status */}
-      <div className="bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6">
+      {/* SEÇÃO: Visibilidade & Status */}
+      <div
+        id="secao-publicacao"
+        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6"
+      >
         <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-          7. Visibilidade & Publicação
+          {categoria === "lancamentos" ? "8" : "7"}. Visibilidade & Publicação
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

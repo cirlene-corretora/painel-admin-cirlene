@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CATEGORIAS_CONFIG, formatarPreco } from "@/lib/taxonomia";
-import { getUrlPublicaR2 } from "@/lib/r2";
 import type { ImovelCompleto, SlugCategoria } from "@/lib/types";
 
 export default function PainelAdminPage() {
@@ -363,184 +362,174 @@ export default function PainelAdminPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {imoveisFiltrados.map((imovel) => {
-            const fotoCapa =
-              imovel.fotos?.find((f) => f.is_capa) || imovel.fotos?.[0];
-            const fotoUrl = fotoCapa
-              ? getUrlPublicaR2(fotoCapa.key, 480)
-              : "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80";
-
-            return (
-              <div
-                key={imovel.id}
-                className={`bg-cafe border rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:border-ouro/50 ${
-                  imovel.publicado
-                    ? "border-ouro-suave shadow-lg"
-                    : "border-zinc-800 opacity-80 bg-zinc-950/40"
-                }`}
-              >
-                {/* Capa do Imóvel */}
-                <div className="relative h-48 w-full bg-espresso overflow-hidden group">
-                  <img
-                    src={fotoUrl}
-                    alt={imovel.titulo}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                    decoding="async"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src =
-                        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=80";
-                    }}
-                  />
-
-                  {/* Badges sobre a foto */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                    <span className="px-2.5 py-1 rounded-full text-[0.625rem] uppercase tracking-wider font-semibold bg-espresso/80 backdrop-blur-md text-ouro-claro border border-ouro/30">
-                      {imovel.categoria}
-                    </span>
-                    {imovel.destaque && (
-                      <span className="px-2.5 py-1 rounded-full text-[0.625rem] uppercase tracking-wider font-semibold bg-ouro text-espresso">
-                        ★ Destaque
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Status Toggle Rápido na Capa */}
-                  <button
-                    onClick={() => togglePublicado(imovel)}
-                    title={
-                      imovel.publicado
-                        ? "Clique para OCULTAR este imóvel do catálogo"
-                        : "Clique para PUBLICAR este imóvel no catálogo"
-                    }
-                    className={`absolute top-3 right-3 px-3 py-1 rounded-full text-[0.625rem] uppercase tracking-wider font-semibold backdrop-blur-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                      imovel.publicado
-                        ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-900"
-                        : "bg-zinc-900/85 text-zinc-400 border border-zinc-700 hover:bg-zinc-800"
+        <div className="bg-cafe/70 border border-ouro-suave rounded-2xl overflow-hidden shadow-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-ouro-suave/60 bg-espresso/80 text-[0.6875rem] uppercase tracking-wider text-creme-mutado font-semibold">
+                  <th className="py-3.5 px-4 w-16 text-center">Ordem</th>
+                  <th className="py-3.5 px-4 min-w-[240px]">Imóvel / Empreendimento</th>
+                  <th className="py-3.5 px-4 min-w-[180px]">Categoria & Subcategoria</th>
+                  <th className="py-3.5 px-4 min-w-[160px]">Localização</th>
+                  <th className="py-3.5 px-4 min-w-[130px]">Preço</th>
+                  <th className="py-3.5 px-4 min-w-[120px] text-center">Status</th>
+                  <th className="py-3.5 px-4 min-w-[180px] text-right">Ações CRUD</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ouro-suave/30 text-xs">
+                {imoveisFiltrados.map((imovel) => (
+                  <tr
+                    key={imovel.id}
+                    className={`transition-colors hover:bg-espresso/60 ${
+                      imovel.publicado ? "" : "opacity-75 bg-zinc-950/20"
                     }`}
                   >
-                    <span
-                      className={`size-1.5 rounded-full ${
-                        imovel.publicado ? "bg-emerald-400 animate-pulse" : "bg-zinc-500"
-                      }`}
-                    />
-                    {imovel.publicado ? "Publicado" : "Oculto"}
-                  </button>
+                    {/* Ordem */}
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="inline-flex items-center gap-1 bg-espresso border border-ouro/25 rounded-md px-1.5 py-0.5">
+                        <span className="font-mono text-[0.6875rem] text-ouro-claro font-semibold">
+                          #{imovel.ordem ?? 0}
+                        </span>
+                        <div className="flex flex-col ml-0.5">
+                          <button
+                            type="button"
+                            onClick={() => alterarOrdem(imovel, -1)}
+                            className="text-[0.55rem] text-creme/60 hover:text-ouro-claro leading-none p-0.5 cursor-pointer"
+                            title="Subir posição (mostrar antes)"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => alterarOrdem(imovel, 1)}
+                            className="text-[0.55rem] text-creme/60 hover:text-ouro-claro leading-none p-0.5 cursor-pointer"
+                            title="Descer posição (mostrar depois)"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                      </div>
+                    </td>
 
-                  {/* Preço sobre a base da foto */}
-                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-espresso via-espresso/60 to-transparent p-3 pt-6 flex justify-between items-end">
-                    <span className="text-sm font-semibold text-creme font-serif">
+                    {/* Imóvel */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/admin/imovel/${imovel.id}`}
+                          className="font-serif text-sm font-semibold text-creme hover:text-ouro-claro transition-colors line-clamp-1"
+                        >
+                          {imovel.titulo}
+                        </Link>
+                        {imovel.destaque && (
+                          <span className="px-1.5 py-0.5 rounded text-[0.5625rem] uppercase font-bold bg-ouro text-espresso shrink-0">
+                            ★ Destaque
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[0.6875rem] text-creme/50 font-mono mt-0.5 flex items-center gap-2">
+                        <span>/{imovel.slug}</span>
+                        {imovel.incorporadora && (
+                          <span className="text-ouro/80 font-sans">
+                            · {imovel.incorporadora}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Categoria & Subcategoria */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className="px-2 py-0.5 rounded-full text-[0.625rem] font-semibold uppercase tracking-wider bg-espresso text-ouro-claro border border-ouro/30">
+                          {imovel.categoria}
+                        </span>
+                        <span className="text-[0.6875rem] text-creme-mutado capitalize">
+                          {imovel.subcategoria}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Localização */}
+                    <td className="py-3.5 px-4 text-creme/80">
+                      <span className="block font-medium">
+                        {imovel.bairro || "—"}
+                      </span>
+                      <span className="text-[0.6875rem] text-creme-mutado">
+                        {imovel.cidade}/{imovel.uf}
+                      </span>
+                    </td>
+
+                    {/* Preço */}
+                    <td className="py-3.5 px-4 font-serif font-semibold text-ouro-claro">
                       {formatarPreco(imovel.preco, imovel.preco_unidade)}
-                    </span>
-                    {imovel.fotos && imovel.fotos.length > 0 && (
-                      <span className="text-[0.625rem] text-creme/60">
-                        📷 {imovel.fotos.length} foto(s)
-                      </span>
-                    )}
-                  </div>
-                </div>
+                    </td>
 
-                {/* Conteúdo Textual do Card */}
-                <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-serif text-lg text-ouro-claro font-semibold leading-snug line-clamp-1">
-                      {imovel.titulo}
-                    </h3>
-                    <p className="text-xs text-creme-mutado mt-1 line-clamp-1">
-                      {imovel.subcategoria} · {imovel.bairro ? `${imovel.bairro}, ` : ""}{imovel.cidade}/{imovel.uf}
-                    </p>
-
-                    {imovel.chamada && (
-                      <p className="text-xs text-creme/75 mt-2 line-clamp-2 italic">
-                        "{imovel.chamada}"
-                      </p>
-                    )}
-
-                    {/* Especificações Rápidas */}
-                    <div className="flex flex-wrap gap-2 text-[0.6875rem] text-creme/50 mt-3 pt-3 border-t border-ouro-suave/50">
-                      {imovel.specs?.areaUtil ? (
-                        <span>📐 {imovel.specs.areaUtil} m²</span>
-                      ) : null}
-                      {imovel.specs?.quartos ? (
-                        <span>🛏 {imovel.specs.quartos} qts</span>
-                      ) : null}
-                      {imovel.specs?.suites ? (
-                        <span>🚿 {imovel.specs.suites} suítes</span>
-                      ) : null}
-                      {imovel.specs?.vagas ? (
-                        <span>🚗 {imovel.specs.vagas} vagas</span>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {/* Ações do Card */}
-                  <div className="mt-5 pt-3 border-t border-ouro-suave flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/admin/imovel/${imovel.id}`}
-                        className="px-3 py-1.5 rounded-lg btn-secundario text-xs uppercase tracking-wider font-semibold hover:border-ouro"
+                    {/* Status Toggle */}
+                    <td className="py-3.5 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => togglePublicado(imovel)}
+                        title={
+                          imovel.publicado
+                            ? "Clique para OCULTAR este imóvel da vitrine"
+                            : "Clique para PUBLICAR este imóvel na vitrine"
+                        }
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.625rem] uppercase tracking-wider font-semibold transition-all cursor-pointer ${
+                          imovel.publicado
+                            ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-900"
+                            : "bg-zinc-900/85 text-zinc-400 border border-zinc-700 hover:bg-zinc-800"
+                        }`}
                       >
-                        Editar
-                      </Link>
+                        <span
+                          className={`size-1.5 rounded-full ${
+                            imovel.publicado
+                              ? "bg-emerald-400 animate-pulse"
+                              : "bg-zinc-500"
+                          }`}
+                        />
+                        {imovel.publicado ? "Publicado" : "Oculto"}
+                      </button>
+                    </td>
 
-                      <a
-                        href={`http://localhost:3000/imovel/${imovel.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 text-creme/50 hover:text-ouro-claro rounded-lg transition-colors"
-                        title="Ver página no catálogo"
-                      >
-                        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </a>
-                    </div>
+                    {/* Ações CRUD */}
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <a
+                          href={`http://localhost:3000/imovel/${imovel.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 rounded-lg text-creme/60 hover:text-ouro-claro hover:bg-espresso transition-colors"
+                          title="Visualizar no catálogo público"
+                        >
+                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </a>
 
-                    {/* Ajuste Rápido de Posição / Ordem */}
-                    <div
-                      className="flex items-center gap-1.5 bg-espresso/80 border border-ouro/25 rounded-lg px-2 py-1 text-xs"
-                      title="Posição na vitrine. Menores números aparecem primeiro."
-                    >
-                      <span className="text-[0.6875rem] text-creme-mutado font-mono">
-                        #{imovel.ordem ?? 0}
-                      </span>
-                      <div className="flex flex-col">
+                        <Link
+                          href={`/admin/imovel/${imovel.id}`}
+                          className="px-2.5 py-1.5 rounded-lg btn-secundario text-[0.6875rem] uppercase tracking-wider font-semibold hover:border-ouro"
+                        >
+                          Editar
+                        </Link>
+
                         <button
                           type="button"
-                          onClick={() => alterarOrdem(imovel, -1)}
-                          className="text-[0.6rem] text-creme/60 hover:text-ouro-claro leading-none p-0.5 cursor-pointer transition-colors"
-                          title="Subir posição (mostrar antes)"
+                          onClick={() => setDeletandoId(imovel.id)}
+                          className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-950/30 transition-colors cursor-pointer"
+                          title="Excluir permanentemente"
                         >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => alterarOrdem(imovel, 1)}
-                          className="text-[0.6rem] text-creme/60 hover:text-ouro-claro leading-none p-0.5 cursor-pointer transition-colors"
-                          title="Descer posição (mostrar depois)"
-                        >
-                          ▼
+                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
-                    </div>
-
-                    <button
-                      onClick={() => setDeletandoId(imovel.id)}
-                      className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
-                      title="Excluir imóvel"
-                    >
-                      <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
