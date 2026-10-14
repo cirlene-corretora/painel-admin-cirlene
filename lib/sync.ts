@@ -3,7 +3,11 @@
  */
 export async function sincronizarCatalogo(slug?: string) {
   const catalogoUrl = process.env.NEXT_PUBLIC_CATALOGO_URL || "http://localhost:3000";
-  const secret = process.env.REVALIDATE_SECRET || "cirlene-revalidate-secret-2026";
+  const secret = process.env.REVALIDATE_SECRET?.trim();
+  if (!secret) {
+    console.warn("[sync] REVALIDATE_SECRET não configurado; revalidação ignorada.");
+    return;
+  }
 
   try {
     const url = new URL("/api/revalidate", catalogoUrl);
