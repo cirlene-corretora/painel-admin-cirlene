@@ -12,6 +12,7 @@ import {
   getSubcategoriasPorCategoria,
 } from "@/lib/taxonomia";
 import { getUrlPublicaR2 } from "@/lib/r2";
+import { avisarCatalogo } from "@/lib/avisar-catalogo";
 import type { ImovelCompleto, FotoImovel, SlugCategoria, StatusObra, UnidadePreco } from "@/lib/types";
 
 interface ImovelFormProps {
@@ -310,11 +311,8 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         }
       }
 
-      // Revalida em tempo real no catálogo
-      fetch("/api/revalidate-catalogo", {
-        method: "POST",
-        body: JSON.stringify({ slug: slugLimpo }),
-      }).catch(() => {});
+      // Avisa o catálogo: antes (slug/categoria antigos) e depois da edição.
+      avisarCatalogo(imovelInicial, payloadImovel);
 
       setSucesso(
         ehNovo

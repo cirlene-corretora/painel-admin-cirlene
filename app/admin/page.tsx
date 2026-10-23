@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CATEGORIAS_CONFIG, formatarPreco } from "@/lib/taxonomia";
 import type { ImovelCompleto, SlugCategoria } from "@/lib/types";
+import { avisarCatalogo } from "@/lib/avisar-catalogo";
 
 export default function PainelAdminPage() {
   const [imoveis, setImoveis] = useState<ImovelCompleto[]>([]);
@@ -71,11 +72,7 @@ export default function PainelAdminPage() {
           ? `"${imovel.titulo}" agora está VISÍVEL no catálogo!`
           : `"${imovel.titulo}" foi OCULTADO do catálogo (mantido no sistema).`
       );
-      // Dispara revalidação no catálogo
-      fetch("/api/revalidate-catalogo", {
-        method: "POST",
-        body: JSON.stringify({ slug: imovel.slug }),
-      }).catch(() => {});
+      avisarCatalogo(imovel);
     }
   };
 
@@ -96,11 +93,8 @@ export default function PainelAdminPage() {
     } else {
       setImoveis((prev) => prev.filter((i) => i.id !== deletandoId));
       mostrarSucesso(`Imóvel "${imovel?.titulo || ""}" excluído permanentemente.`);
-      // Dispara revalidação no catálogo
-      fetch("/api/revalidate-catalogo", {
-        method: "POST",
-        body: JSON.stringify({ slug: imovel?.slug }),
-      }).catch(() => {});
+      // O imóvel já saiu do banco: os campos dele dizem de onde limpar.
+      avisarCatalogo(imovel);
     }
 
     setDeletandoId(null);
@@ -130,10 +124,7 @@ export default function PainelAdminPage() {
       carregarImoveis();
     } else {
       mostrarSucesso(`Posição de "${imovel.titulo}" ajustada para #${novaOrdem}.`);
-      fetch("/api/revalidate-catalogo", {
-        method: "POST",
-        body: JSON.stringify({ slug: imovel.slug }),
-      }).catch(() => {});
+      avisarCatalogo(imovel);
     }
   };
 
