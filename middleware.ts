@@ -5,7 +5,12 @@ export async function middleware(req: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+  // Sem o Supabase configurado o painel FECHA (não abre sem login): foi assim
+  // que /admin respondeu 200 a qualquer um no deploy sem envs (23/10).
   if (!url || !anonKey) {
+    if (req.nextUrl.pathname.startsWith("/admin")) {
+      return new NextResponse("Painel sem configuração do Supabase.", { status: 503 });
+    }
     return NextResponse.next();
   }
 

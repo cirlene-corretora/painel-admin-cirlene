@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadParaR2 } from "@/lib/r2";
+import { exigirLogin } from "@/lib/exigir-login";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  // Fora do matcher do middleware: sem isto, qualquer um subia arquivo no R2.
+  const bloqueio = await exigirLogin();
+  if (bloqueio) return bloqueio;
+
   try {
     const formData = await req.formData();
     const pasta = (formData.get("pasta") as string) || "geral";

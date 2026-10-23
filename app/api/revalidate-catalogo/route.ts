@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { exigirLogin } from "@/lib/exigir-login";
 import { sincronizarCatalogo, type RegistroImovel } from "@/lib/sync";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +16,8 @@ function registroValido(x: unknown): x is RegistroImovel {
 export async function POST(req: NextRequest) {
   // Fora do matcher do middleware: o login é conferido aqui. Sem isto,
   // qualquer um invalidaria o cache do catálogo em loop (custo na Vercel).
-  const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-  }
+  const bloqueio = await exigirLogin();
+  if (bloqueio) return bloqueio;
 
   try {
     const body = (await req.json().catch(() => ({}))) as { imoveis?: unknown };
