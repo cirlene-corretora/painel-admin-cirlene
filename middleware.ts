@@ -42,6 +42,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Conta logada sem papel 'admin' (o Auth aceita cadastro por e-mail):
+  // a página de edição lê com a service role, então barra aqui.
+  if (user && ehRotaAdmin) {
+    const { data: admin } = await supabase.rpc("is_admin");
+    if (admin !== true) {
+      return new NextResponse("Sem acesso ao painel", { status: 403 });
+    }
+  }
+
   if (user && ehRotaLogin) {
     return NextResponse.redirect(new URL("/admin", req.url));
   }

@@ -17,5 +17,11 @@ export async function exigirLogin(): Promise<NextResponse | null> {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
+  // Sessão não basta: o Auth aceita cadastro por e-mail. Só quem tem
+  // papel 'admin' em `perfis` (concedido à mão) passa.
+  const { data: admin } = await supabase.rpc("is_admin");
+  if (admin !== true) {
+    return NextResponse.json({ error: "Sem acesso ao painel" }, { status: 403 });
+  }
   return null;
 }
