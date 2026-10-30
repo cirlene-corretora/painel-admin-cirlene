@@ -9,13 +9,19 @@ export type SlugCategoria =
   | "investimentos"
   | "fazendas";
 
+/** Faixa de lançamento: contagem = maior + `…Min`; área = menor + `…Max` (igual ao catálogo). */
 export interface Specs {
   quartos?: number;
+  quartosMin?: number;
   suites?: number;
+  suitesMin?: number;
   vagas?: number;
+  vagasMin?: number;
   banheiros?: number;
   areaUtil?: number; // m²
+  areaUtilMax?: number; // m²
   areaTotal?: number; // m²
+  areaTotalMax?: number; // m²
 }
 
 export interface FotoImovel {

@@ -73,6 +73,14 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
   const [banheiros, setBanheiros] = useState<string>(
     imovelInicial?.specs?.banheiros ? String(imovelInicial.specs.banheiros) : ""
   );
+  // Faixa (lançamento com várias plantas): "59 a 77 m²", "2 e 3 quartos".
+  const CAMPOS_FAIXA = ["areaUtilMax", "areaTotalMax", "quartosMin", "suitesMin", "vagasMin"] as const;
+  const [faixa, setFaixa] = useState<Record<(typeof CAMPOS_FAIXA)[number], string>>(
+    () => Object.fromEntries(CAMPOS_FAIXA.map((c) => {
+      const v = imovelInicial?.specs?.[c];
+      return [c, v != null ? String(v) : ""];
+    })) as Record<(typeof CAMPOS_FAIXA)[number], string>
+  );
 
   // Comodidades
   const [comodidades, setComodidades] = useState<string[]>(
@@ -249,6 +257,9 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         preco_unidade: precoUnidade,
         faixa_preco: precoUnidade === "sob-consulta" ? "sob-consulta" : "total",
         specs: {
+          // Parte do que já existe: chave que o formulário não conhece não some.
+          ...(imovelInicial?.specs ?? {}),
+          ...Object.fromEntries(CAMPOS_FAIXA.map((c) => [c, faixa[c] !== "" ? Number(faixa[c]) : undefined])),
           areaUtil: areaUtil ? Number(areaUtil) : undefined,
           areaTotal: areaTotal ? Number(areaTotal) : undefined,
           quartos: quartos ? Number(quartos) : undefined,
@@ -935,6 +946,36 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
               placeholder="4"
               className="w-full input-luxury text-sm text-center"
             />
+          </div>
+        </div>
+
+        {/* Faixa: só para lançamento com várias plantas. Vazio = valor único. */}
+        <div>
+          <p className="text-xs text-creme-mutado mb-3">
+            Várias plantas? Preencha a faixa. Ex.: área útil 59 e &quot;até&quot; 77 → o site mostra &quot;59 a 77 m²&quot;;
+            quartos 3 e &quot;a partir de&quot; 2 → &quot;2 e 3 dormitórios&quot;.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            {([
+              ["areaUtilMax", "Área útil até (m²)", "Ex: 77"],
+              ["areaTotalMax", "Área total até (m²)", "Ex: 450"],
+              ["quartosMin", "Quartos a partir de", "Ex: 2"],
+              ["suitesMin", "Suítes a partir de", "Ex: 1"],
+              ["vagasMin", "Vagas a partir de", "Ex: 1"],
+            ] as const).map(([campo, rotulo, ex]) => (
+              <div key={campo}>
+                <label className="block text-[0.625rem] uppercase tracking-wider text-creme-mutado mb-2">
+                  {rotulo}
+                </label>
+                <input
+                  type="number"
+                  value={faixa[campo]}
+                  onChange={(e) => setFaixa((f) => ({ ...f, [campo]: e.target.value }))}
+                  placeholder={ex}
+                  className="w-full input-luxury text-sm text-center"
+                />
+              </div>
+            ))}
           </div>
         </div>
 
