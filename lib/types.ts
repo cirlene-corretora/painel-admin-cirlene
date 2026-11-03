@@ -51,6 +51,8 @@ export interface ImovelCompleto {
   bairro: string;
   cidade: string;
   uf: string;
+  /** Mapa da ficha. null = sem mapa. */
+  localizacao?: { endereco: string; lat: number; lng: number; precisao: "exata" | "aproximada" } | null;
   preco?: number | null;
   preco_unidade: UnidadePreco;
   faixa_preco: string;

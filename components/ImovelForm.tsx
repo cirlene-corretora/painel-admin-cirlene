@@ -45,6 +45,14 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
   const [bairro, setBairro] = useState(imovelInicial?.bairro || "");
   const [cidade, setCidade] = useState(imovelInicial?.cidade || "Campo Grande");
   const [uf, setUf] = useState(imovelInicial?.uf || "MS");
+  // Mapa da ficha: endereço + ponto. Aceita "lat, lng" ou link do Google Maps colado.
+  const [endereco, setEndereco] = useState(imovelInicial?.localizacao?.endereco || "");
+  const [coordenadas, setCoordenadas] = useState(
+    imovelInicial?.localizacao ? `${imovelInicial.localizacao.lat}, ${imovelInicial.localizacao.lng}` : ""
+  );
+  const [precisao, setPrecisao] = useState<"exata" | "aproximada">(
+    imovelInicial?.localizacao?.precisao || "exata"
+  );
 
   // Preço
   const [preco, setPreco] = useState<string>(
@@ -237,6 +245,17 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         throw new Error("O slug do imóvel é obrigatório.");
       }
 
+      let localizacao: ImovelCompleto["localizacao"] = null;
+      if (endereco.trim() || coordenadas.trim()) {
+        const ponto = lerCoordenadas(coordenadas);
+        if (!endereco.trim() || !ponto) {
+          throw new Error(
+            "Mapa: preencha o endereço e as coordenadas (ex.: -20.4697, -54.6201 ou um link do Google Maps). Para tirar o mapa, deixe os dois vazios."
+          );
+        }
+        localizacao = { endereco: endereco.trim(), ...ponto, precisao };
+      }
+
       const supabase = getSupabaseBrowserClient();
 
       const payloadImovel = {
@@ -253,6 +272,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         bairro: bairro.trim() || "",
         cidade: cidade.trim() || "Campo Grande",
         uf: uf.trim() || "MS",
+        localizacao,
         preco: preco ? Number(preco) : null,
         preco_unidade: precoUnidade,
         faixa_preco: precoUnidade === "sob-consulta" ? "sob-consulta" : "total",
@@ -815,6 +835,49 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
               className="w-full input-luxury text-sm uppercase text-center"
             />
           </div>
+
+          <div className="sm:col-span-12">
+            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
+              Endereço do mapa
+            </label>
+            <input
+              type="text"
+              value={endereco}
+              onChange={(e) => setEndereco(e.target.value)}
+              placeholder="Ex: Rua Afonso Lino Barbosa, 291 · Chácara Cachoeira, Campo Grande/MS"
+              className="w-full input-luxury text-sm"
+            />
+          </div>
+
+          <div className="sm:col-span-8">
+            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
+              Coordenadas (lat, lng) ou link do Google Maps
+            </label>
+            <input
+              type="text"
+              value={coordenadas}
+              onChange={(e) => setCoordenadas(e.target.value)}
+              placeholder="-20.4697, -54.6201"
+              className="w-full input-luxury text-sm"
+            />
+            <p className="mt-1.5 text-xs text-creme-mutado">
+              No Google Maps: clique com o botão direito no ponto e copie os números. Vazio = ficha sem mapa.
+            </p>
+          </div>
+
+          <div className="sm:col-span-4">
+            <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
+              Precisão
+            </label>
+            <select
+              value={precisao}
+              onChange={(e) => setPrecisao(e.target.value as "exata" | "aproximada")}
+              className="w-full input-luxury text-sm"
+            >
+              <option value="exata">Exata (lançamento)</option>
+              <option value="aproximada">Aproximada (revenda: só a região)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -1251,4 +1314,18 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
       </div>
     </form>
   );
+}
+
+/** "lat, lng" ou link do Google Maps (@lat,lng · q=lat,lng · !3dlat!4dlng). */
+function lerCoordenadas(texto: string): { lat: number; lng: number } | null {
+  const t = texto.trim();
+  const m =
+    t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/) ||
+    t.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) ||
+    t.match(/(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng };
 }
