@@ -53,6 +53,8 @@ export interface ImovelCompleto {
   uf: string;
   /** Mapa da ficha. null = sem mapa. */
   localizacao?: { endereco: string; lat: number; lng: number; precisao: "exata" | "aproximada" } | null;
+  /** Card "Dados oficiais" ao lado do mapa. null = sem card. */
+  dados_oficiais?: { titulo?: string; itens: string[]; texto?: string } | null;
   preco?: number | null;
   preco_unidade: UnidadePreco;
   faixa_preco: string;

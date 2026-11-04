@@ -54,6 +54,11 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
     imovelInicial?.localizacao?.precisao || "exata"
   );
 
+  // Card "Dados oficiais": o texto da incorporadora, um item por linha.
+  const [oficialTitulo, setOficialTitulo] = useState(imovelInicial?.dados_oficiais?.titulo || "");
+  const [oficialItens, setOficialItens] = useState((imovelInicial?.dados_oficiais?.itens || []).join("\n"));
+  const [oficialTexto, setOficialTexto] = useState(imovelInicial?.dados_oficiais?.texto || "");
+
   // Preço
   const [preco, setPreco] = useState<string>(
     imovelInicial?.preco ? String(imovelInicial.preco) : ""
@@ -256,6 +261,18 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         localizacao = { endereco: endereco.trim(), ...ponto, precisao };
       }
 
+      const itensOficiais = oficialItens.split("\n").map((i) => i.trim()).filter(Boolean);
+      if ((oficialTitulo.trim() || oficialTexto.trim()) && !itensOficiais.length) {
+        throw new Error("Dados oficiais: escreva ao menos um item, ou deixe o título e o texto vazios para tirar o card.");
+      }
+      const dadosOficiais = itensOficiais.length
+        ? {
+            ...(oficialTitulo.trim() ? { titulo: oficialTitulo.trim() } : {}),
+            itens: itensOficiais,
+            ...(oficialTexto.trim() ? { texto: oficialTexto.trim() } : {}),
+          }
+        : null;
+
       const supabase = getSupabaseBrowserClient();
 
       const payloadImovel = {
@@ -273,6 +290,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         cidade: cidade.trim() || "Campo Grande",
         uf: uf.trim() || "MS",
         localizacao,
+        dados_oficiais: dadosOficiais,
         preco: preco ? Number(preco) : null,
         preco_unidade: precoUnidade,
         faixa_preco: precoUnidade === "sob-consulta" ? "sob-consulta" : "total",
@@ -833,6 +851,36 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
               placeholder="MS"
               maxLength={2}
               className="w-full input-luxury text-sm uppercase text-center"
+            />
+          </div>
+
+          <div className="sm:col-span-12 border-t border-ouro-suave pt-5">
+            <p className="block text-xs uppercase tracking-wider text-creme-mutado mb-1">
+              Dados oficiais (card ao lado do mapa)
+            </p>
+            <p className="text-xs text-creme-mutado/70 mb-3">
+              Copie como a incorporadora publica. Sem itens, a ficha não mostra o card.
+            </p>
+            <input
+              type="text"
+              value={oficialTitulo}
+              onChange={(e) => setOficialTitulo(e.target.value)}
+              placeholder="Título (opcional). Ex: Original de todos os ângulos"
+              className="w-full input-luxury text-sm mb-3"
+            />
+            <textarea
+              value={oficialItens}
+              onChange={(e) => setOficialItens(e.target.value)}
+              rows={6}
+              placeholder={"Um item por linha. Ex:\nAndares: 18\nUnidades: 160"}
+              className="w-full input-luxury text-sm mb-3"
+            />
+            <textarea
+              value={oficialTexto}
+              onChange={(e) => setOficialTexto(e.target.value)}
+              rows={3}
+              placeholder="Parágrafo oficial (opcional)"
+              className="w-full input-luxury text-sm"
             />
           </div>
 
