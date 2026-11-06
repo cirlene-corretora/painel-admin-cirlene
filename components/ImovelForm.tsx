@@ -11,7 +11,8 @@ import {
   COMODIDADES_PADRAO,
   getSubcategoriasPorCategoria,
 } from "@/lib/taxonomia";
-import { getUrlPublicaR2 } from "@/lib/r2";
+import { getUrlPublicaR2, linkCatalogo, normalizarVideo, urlVideo } from "@/lib/midia";
+import { enviarImagem, enviarVideo } from "@/lib/enviar-midia";
 import { avisarCatalogo } from "@/lib/avisar-catalogo";
 import type { ImovelCompleto, FotoImovel, SlugCategoria, StatusObra, UnidadePreco } from "@/lib/types";
 
@@ -105,8 +106,9 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
   const [incorporadora, setIncorporadora] = useState(
     imovelInicial?.incorporadora || ""
   );
+  // Em edição, vale o que está gravado (null fica null): só cadastro novo recebe padrão.
   const [statusObra, setStatusObra] = useState<StatusObra | "">(
-    imovelInicial?.status_obra || "lancamento"
+    ehNovo ? "lancamento" : imovelInicial?.status_obra || ""
   );
   const [previsaoEntrega, setPrevisaoEntrega] = useState(
     imovelInicial?.previsao_entrega || ""
@@ -128,6 +130,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
   // Fotos (Cloudflare R2)
   const [fotos, setFotos] = useState<FotoImovel[]>(imovelInicial?.fotos || []);
   const [enviandoFotos, setEnviandoFotos] = useState(false);
+  const [progresso, setProgresso] = useState<string | null>(null);
 
   // Estados de envio
   const [salvando, setSalvando] = useState(false);
@@ -151,73 +154,177 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
     }
   };
 
-  // Upload direto para Cloudflare R2
-  const handleUploadFotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const arquivos = e.target.files;
-    if (!arquivos || arquivos.length === 0) return;
+  const pastaDoImovel = () => `${categoria}/${slug.trim() || "imovel"}`;
+
+  // Sobe uma imagem por vez: a Vercel recusa requisição acima de 4,5 MB.
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, tipo: "foto" | "planta") => {
+    const arquivos = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (arquivos.length === 0) return;
 
     setEnviandoFotos(true);
     setErro(null);
+    const falhas: string[] = [];
+    const nomeBase = titulo.trim() || "imóvel";
 
+    for (let i = 0; i < arquivos.length; i++) {
+      setProgresso(`Enviando ${i + 1} de ${arquivos.length}...`);
+      try {
+        const key = await enviarImagem(arquivos[i], pastaDoImovel(), tipo);
+        const nova: FotoImovel = {
+          key,
+          alt: tipo === "planta" ? `Planta de ${nomeBase}` : nomeBase,
+          ordem: 0,
+          is_capa: false,
+          tipo,
+        };
+        setFotos((prev) => {
+          const semCapa = tipo === "foto" && !prev.some((f) => f.is_capa && (f.tipo ?? "foto") === "foto");
+          return [...prev, { ...nova, is_capa: semCapa }];
+        });
+      } catch (err) {
+        falhas.push(`${arquivos[i].name} (${(err as Error).message})`);
+      }
+    }
+
+    setProgresso(null);
+    setEnviandoFotos(false);
+    if (falhas.length) setErro(`Não enviadas: ${falhas.join("; ")}.`);
+  };
+
+  const handleUploadVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!arquivo) return;
+
+    setEnviandoFotos(true);
+    setErro(null);
     try {
-      const formData = new FormData();
-      const slugAtual = slug.trim() || "imovel";
-      formData.append("pasta", `${categoria}/${slugAtual}`);
-
-      for (let i = 0; i < arquivos.length; i++) {
-        formData.append("files", arquivos[i]);
-      }
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error || "Falha no upload para o Cloudflare R2");
-      }
-
-      const novasFotos: FotoImovel[] = json.uploads.map(
-        (u: { key: string; alt: string }, index: number) => ({
-          key: u.key,
-          alt: u.alt || titulo || "Foto do imóvel",
-          ordem: fotos.length + index,
-          is_capa: fotos.length === 0 && index === 0,
-        })
-      );
-
-      setFotos((prev) => [...prev, ...novasFotos]);
-    } catch (err: unknown) {
-      const error = err as Error;
-      console.error("Erro no upload:", error);
-      setErro(error.message || "Erro ao enviar mídia para o Cloudflare R2");
+      const valor = await enviarVideo(arquivo, pastaDoImovel(), (p) => setProgresso(`Enviando o vídeo: ${p}%`));
+      setVideo(valor);
+    } catch (err) {
+      setErro(`Vídeo não enviado: ${(err as Error).message}.`);
     } finally {
+      setProgresso(null);
       setEnviandoFotos(false);
-      e.target.value = "";
     }
   };
 
-  // Definir Capa
+  const midiaDe = (tipo: "foto" | "planta") =>
+    fotos.map((f, index) => ({ f, index })).filter(({ f }) => (f.tipo ?? "foto") === tipo);
+
   const definirCapa = (index: number) => {
-    setFotos((prev) =>
-      prev.map((f, i) => ({
-        ...f,
-        is_capa: i === index,
-      }))
-    );
+    setFotos((prev) => prev.map((f, i) => ({ ...f, is_capa: i === index })));
   };
 
-  // Remover Foto
   const removerFoto = (index: number) => {
     setFotos((prev) => {
-      const novaLista = prev.filter((_, i) => i !== index);
-      // Se a removida era capa, define a primeira como capa
-      if (novaLista.length > 0 && !novaLista.some((f) => f.is_capa)) {
-        novaLista[0].is_capa = true;
+      const lista = prev.filter((_, i) => i !== index);
+      const primeira = lista.findIndex((f) => (f.tipo ?? "foto") === "foto");
+      if (primeira >= 0 && !lista.some((f) => f.is_capa)) {
+        return lista.map((f, i) => ({ ...f, is_capa: i === primeira }));
       }
-      return novaLista;
+      return lista;
     });
+  };
+
+  // Move dentro do mesmo grupo: a ordem aqui é a ordem no site.
+  const moverFoto = (index: number, direcao: -1 | 1) => {
+    setFotos((prev) => {
+      const tipo = prev[index].tipo ?? "foto";
+      const grupo = prev.map((f, i) => ({ f, i })).filter(({ f }) => (f.tipo ?? "foto") === tipo).map(({ i }) => i);
+      const alvo = grupo[grupo.indexOf(index) + direcao];
+      if (alvo === undefined) return prev;
+      const lista = [...prev];
+      [lista[index], lista[alvo]] = [lista[alvo], lista[index]];
+      return lista;
+    });
+  };
+
+  const renderMidia = (f: FotoImovel, index: number) => {
+    const ehPlanta = f.tipo === "planta";
+    const grupo = midiaDe(ehPlanta ? "planta" : "foto");
+    const posicao = grupo.findIndex((g) => g.index === index);
+    return (
+      <div
+        key={`${f.key}-${index}`}
+        className={`bg-espresso border rounded-xl overflow-hidden relative group transition-all ${
+          f.is_capa ? "border-ouro ring-2 ring-ouro/40" : "border-ouro-suave"
+        }`}
+      >
+        <div className={`h-32 w-full relative ${ehPlanta ? "bg-white" : "bg-cafe"}`}>
+          <img
+            src={getUrlPublicaR2(f.key, 480)}
+            alt={f.alt || "Foto"}
+            className={`w-full h-full ${ehPlanta ? "object-contain" : "object-cover"}`}
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.style.visibility = "hidden";
+            }}
+          />
+          {f.is_capa && (
+            <span className="absolute top-2 left-2 bg-ouro text-espresso text-[0.625rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow">
+              Capa
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => removerFoto(index)}
+            className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-red-600 text-white rounded-lg transition-colors cursor-pointer"
+            title="Remover"
+            aria-label={`Remover ${f.alt}`}
+          >
+            <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-2.5 space-y-2">
+          <input
+            type="text"
+            value={f.alt}
+            onChange={(e) => {
+              const novoAlt = e.target.value;
+              setFotos((prev) => prev.map((item, i) => (i === index ? { ...item, alt: novoAlt } : item)));
+            }}
+            placeholder={ehPlanta ? "Legenda da planta" : "Descrição da foto"}
+            aria-label={ehPlanta ? "Legenda da planta" : "Descrição da foto"}
+            className="w-full bg-cafe border border-ouro-suave text-creme text-[0.6875rem] px-2 py-1 rounded outline-none"
+          />
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => moverFoto(index, -1)}
+              disabled={posicao === 0}
+              aria-label="Mover para trás"
+              className="px-2 py-1 text-[0.625rem] border border-ouro-suave rounded text-ouro-claro disabled:opacity-30 cursor-pointer"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={() => moverFoto(index, 1)}
+              disabled={posicao === grupo.length - 1}
+              aria-label="Mover para frente"
+              className="px-2 py-1 text-[0.625rem] border border-ouro-suave rounded text-ouro-claro disabled:opacity-30 cursor-pointer"
+            >
+              →
+            </button>
+            {!ehPlanta && !f.is_capa && (
+              <button
+                type="button"
+                onClick={() => definirCapa(index)}
+                className="flex-1 py-1 text-[0.625rem] uppercase tracking-wider border border-ouro-suave rounded hover:bg-ouro/20 text-ouro-claro transition-colors cursor-pointer"
+              >
+                Definir capa
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Adicionar comodidade
@@ -246,9 +353,16 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
 
     try {
       const slugLimpo = slug.trim();
-      if (!slugLimpo) {
-        throw new Error("O slug do imóvel é obrigatório.");
+      if (!/^[a-z0-9-]{1,120}$/.test(slugLimpo)) {
+        throw new Error("Slug: use só letras minúsculas sem acento, números e hífen. Com outro formato o catálogo não atualiza a página.");
       }
+      if (!titulo.trim()) throw new Error("Preencha o título do imóvel.");
+      if (!bairro.trim()) throw new Error('Preencha o bairro. Sem saber o bairro, escreva "Endereço sob consulta".');
+      if (!descricao.trim()) throw new Error("Preencha a descrição: é o texto principal da ficha.");
+      if (precoUnidade !== "sob-consulta" && !(Number(preco) > 0)) {
+        throw new Error('Preço: informe o valor, ou escolha "Sob Consulta".');
+      }
+      const videoFinal = normalizarVideo(video);
 
       let localizacao: ImovelCompleto["localizacao"] = null;
       if (endereco.trim() || coordenadas.trim()) {
@@ -258,7 +372,14 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
             "Mapa: preencha o endereço e as coordenadas (ex.: -20.4697, -54.6201 ou um link do Google Maps). Para tirar o mapa, deixe os dois vazios."
           );
         }
-        localizacao = { endereco: endereco.trim(), ...ponto, precisao };
+        // Parte do que já existe: o zoom das regiões aproximadas não tem campo aqui.
+        const zoomAtual = imovelInicial?.localizacao?.zoom;
+        localizacao = {
+          endereco: endereco.trim(),
+          ...ponto,
+          precisao,
+          ...(precisao === "aproximada" && zoomAtual ? { zoom: zoomAtual } : {}),
+        };
       }
 
       const itensOficiais = oficialItens.split("\n").map((i) => i.trim()).filter(Boolean);
@@ -310,7 +431,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         status_obra: statusObra || null,
         previsao_entrega: previsaoEntrega.trim() || null,
         fase_tabela: faseTabela.trim() || null,
-        video: video.trim() || null,
+        video: videoFinal,
         publicado,
         destaque,
         ordem: Number(ordem) || 0,
@@ -338,45 +459,63 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
 
       // Sincronizar Fotos no Supabase
       if (imovelId) {
-        // Remove fotos antigas do banco e re-insere na ordem correta
-        await supabase.from("imovel_fotos").delete().eq("imovel_id", imovelId);
+        // Grava as novas ANTES de apagar as antigas: se falhar no meio, o imóvel
+        // fica com fotos a mais, nunca sem nenhuma.
+        const { data: antigas, error: erroAntigas } = await supabase
+          .from("imovel_fotos")
+          .select("id")
+          .eq("imovel_id", imovelId);
+        if (erroAntigas) throw erroAntigas;
 
-        if (fotos.length > 0) {
-          const fotosParaSalvar = fotos.map((f, i) => ({
-            imovel_id: imovelId,
-            key: f.key,
-            alt: f.alt || titulo,
-            ordem: i,
-            is_capa: Boolean(f.is_capa || i === 0),
-          }));
+        const soFotos = fotos.filter((f) => (f.tipo ?? "foto") === "foto");
+        const soPlantas = fotos.filter((f) => f.tipo === "planta");
+        const capaEscolhida = Math.max(0, soFotos.findIndex((f) => f.is_capa));
+        const linhas = [
+          ...soFotos.map((f, i) => ({ ...f, tipo: "foto" as const, is_capa: i === capaEscolhida })),
+          ...soPlantas.map((f) => ({ ...f, tipo: "planta" as const, is_capa: false })),
+        ].map((f, ordem) => ({
+          imovel_id: imovelId,
+          key: f.key,
+          alt: f.alt?.trim() || titulo.trim(),
+          ordem,
+          is_capa: f.is_capa,
+          tipo: f.tipo,
+        }));
 
-          const { error: erroFotos } = await supabase
-            .from("imovel_fotos")
-            .insert(fotosParaSalvar);
-
-          if (erroFotos) {
-            console.error("Erro ao salvar fotos:", erroFotos);
-          }
+        if (linhas.length > 0) {
+          const { error: erroFotos } = await supabase.from("imovel_fotos").insert(linhas);
+          if (erroFotos) throw new Error(`Imóvel salvo, mas as fotos não: ${erroFotos.message}`);
+        }
+        const idsAntigos = (antigas ?? []).map((a) => a.id);
+        if (idsAntigos.length > 0) {
+          const { error: erroApagar } = await supabase.from("imovel_fotos").delete().in("id", idsAntigos);
+          if (erroApagar) throw new Error(`Fotos novas salvas, mas as antigas ficaram duplicadas: ${erroApagar.message}`);
         }
       }
 
       // Avisa o catálogo: antes (slug/categoria antigos) e depois da edição.
-      avisarCatalogo(imovelInicial, payloadImovel);
+      const confirmado = await avisarCatalogo(imovelInicial, payloadImovel);
 
+      const feito = ehNovo ? (publicado ? "Imóvel criado e publicado." : "Imóvel criado como oculto.") : "Alterações salvas.";
       setSucesso(
-        ehNovo
-          ? "Imóvel criado e publicado no catálogo com sucesso!"
-          : "Alterações salvas com sucesso e sincronizadas em tempo real no catálogo!"
+        confirmado
+          ? `${feito} O catálogo já foi atualizado.`
+          : `${feito} O catálogo não confirmou a atualização: a mudança aparece no site em até 24 horas.`
       );
 
       setTimeout(() => {
         router.push("/admin");
         router.refresh();
-      }, 1200);
+      }, confirmado ? 1200 : 4000);
     } catch (err: unknown) {
-      const error = err as Error;
+      const error = err as Error & { code?: string };
       console.error("Erro ao salvar imóvel:", error);
-      setErro(error.message || "Erro ao salvar imóvel no Supabase.");
+      setErro(
+        error.code === "23505"
+          ? "Já existe um imóvel com este slug. Troque o slug para continuar."
+          : error.message || "Erro ao salvar imóvel."
+      );
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSalvando(false);
     }
@@ -403,7 +542,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
         <div className="flex items-center gap-3">
           {!ehNovo && slug && (
             <a
-              href={`http://localhost:3000/imovel/${slug}`}
+              href={linkCatalogo(`/imovel/${slug}`)}
               target="_blank"
               rel="noreferrer"
               className="px-4 py-2.5 rounded-xl btn-secundario text-xs uppercase tracking-wider font-medium"
@@ -478,7 +617,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
           href="#secao-fotos"
           className="px-3 py-1.5 rounded-xl text-xs uppercase tracking-wider font-medium text-creme/70 hover:text-ouro-claro hover:bg-cafe transition-colors shrink-0"
         >
-          {categoria === "lancamentos" ? "7" : "6"}. Fotos R2
+          {categoria === "lancamentos" ? "7" : "6"}. Fotos e Plantas
         </a>
         <a
           href="#secao-publicacao"
@@ -521,6 +660,11 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
                     setCategoria(novaCat);
                     const subs = getSubcategoriasPorCategoria(novaCat);
                     if (subs.length > 0) setSubcategoria(subs[0].slug);
+                    // O campo de obra só aparece em lançamentos: sem isto, uma
+                    // revenda nova ia ao site marcada como "Lançamento".
+                    if (ehNovo) {
+                      setStatusObra(novaCat === "lancamentos" ? "lancamento" : novaCat === "business" ? "" : "pronto");
+                    }
                   }}
                   className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                     selecionada
@@ -532,7 +676,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
                     <span className="text-xl">
                       {cat.slug === "lancamentos" && "🏗️"}
                       {cat.slug === "revendas" && "🔑"}
-                      {cat.slug === "investimentos" && "💼"}
+                      {cat.slug === "business" && "💼"}
                       {cat.slug === "fazendas" && "🌾"}
                     </span>
                     {selecionada && (
@@ -548,7 +692,7 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
                     <span className="block text-[0.6875rem] text-creme-mutado mt-1 line-clamp-2">
                       {cat.slug === "lancamentos" && "Lançamentos e empreendimentos na planta / em obras"}
                       {cat.slug === "revendas" && "Casas, apartamentos prontos e lotes avulsos"}
-                      {cat.slug === "investimentos" && "Salas corporativas, galpões e renda de locação"}
+                      {cat.slug === "business" && "Salas corporativas, galpões e renda de locação"}
                       {cat.slug === "fazendas" && "Fazendas de pecuária, lavoura e áreas rurais"}
                     </span>
                   </div>
@@ -1143,131 +1287,115 @@ export function ImovelForm({ imovelInicial, ehNovo = false }: ImovelFormProps) {
       </div>
 
 
-      {/* SEÇÃO: Galeria de Fotos & Mídia (Cloudflare R2) */}
+      {/* SEÇÃO: Fotos, plantas e vídeo */}
       <div
         id="secao-fotos"
-        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-6"
+        className="scroll-mt-24 bg-cafe border border-ouro-suave p-6 sm:p-8 rounded-2xl space-y-8"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
-              {categoria === "lancamentos" ? "7" : "6"}. Fotos e Vídeos (Cloudflare R2)
-            </h2>
-            <p className="text-xs text-creme-mutado mt-1">
-              As imagens e vídeos são gravados diretamente no bucket R2 e vinculados ao imóvel.
-            </p>
-          </div>
-
-          {/* Botão de Upload */}
-          <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-ouro text-xs uppercase tracking-wider cursor-pointer font-semibold shrink-0">
-            {enviandoFotos ? "Enviando para o R2..." : "📷 Adicionar Fotos (R2)"}
-            <input
-              type="file"
-              multiple
-              accept="image/*,video/*"
-              onChange={handleUploadFotos}
-              disabled={enviandoFotos}
-              className="hidden"
-            />
-          </label>
+        <div>
+          <h2 className="text-base font-serif text-ouro font-semibold uppercase tracking-wider">
+            {categoria === "lancamentos" ? "7" : "6"}. Fotos, Plantas e Vídeo
+          </h2>
+          <p className="text-xs text-creme-mutado mt-1">
+            As imagens são reduzidas no seu navegador e enviadas uma a uma. A descrição de cada foto aparece no site e ajuda no Google.
+          </p>
+          {progresso && <p className="text-xs text-ouro-claro mt-2" role="status">{progresso}</p>}
         </div>
 
-        {/* Campo de Vídeo */}
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-creme-mutado mb-2">
-            Chave ou Link do Vídeo (R2 ou YouTube/Vimeo)
-          </label>
+        {/* Fotos */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="text-xs uppercase tracking-wider text-creme font-semibold">
+              Fotos da galeria ({midiaDe("foto").length})
+            </h3>
+            <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-ouro text-xs uppercase tracking-wider cursor-pointer font-semibold shrink-0">
+              {enviandoFotos ? "Enviando..." : "📷 Adicionar Fotos"}
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                data-testid="upload-fotos"
+                onChange={(e) => handleUpload(e, "foto")}
+                disabled={enviandoFotos}
+                className="hidden"
+              />
+            </label>
+          </div>
+          {midiaDe("foto").length === 0 ? (
+            <div className="py-10 border border-dashed border-ouro-suave rounded-xl text-center text-xs text-creme/50">
+              Nenhuma foto ainda. Sem foto, o catálogo mostra uma imagem da cidade como capa.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {midiaDe("foto").map(({ f, index }) => renderMidia(f, index))}
+            </div>
+          )}
+        </div>
+
+        {/* Plantas */}
+        <div className="space-y-4 border-t border-ouro-suave pt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-creme font-semibold">
+                Plantas ({midiaDe("planta").length})
+              </h3>
+              <p className="text-[0.6875rem] text-creme-mutado mt-1">
+                Ganham uma seção própria na ficha, sem corte. Sem planta, a seção não aparece.
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-secundario text-xs uppercase tracking-wider cursor-pointer font-semibold shrink-0">
+              {enviandoFotos ? "Enviando..." : "📐 Adicionar Plantas"}
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                data-testid="upload-plantas"
+                onChange={(e) => handleUpload(e, "planta")}
+                disabled={enviandoFotos}
+                className="hidden"
+              />
+            </label>
+          </div>
+          {midiaDe("planta").length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {midiaDe("planta").map(({ f, index }) => renderMidia(f, index))}
+            </div>
+          )}
+        </div>
+
+        {/* Vídeo */}
+        <div className="space-y-3 border-t border-ouro-suave pt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs uppercase tracking-wider text-creme font-semibold">Vídeo do imóvel</h3>
+              <p className="text-[0.6875rem] text-creme-mutado mt-1">
+                Arquivo .mp4 de até 300 MB. YouTube e Vimeo não tocam no catálogo.
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-secundario text-xs uppercase tracking-wider cursor-pointer font-semibold shrink-0">
+              {enviandoFotos ? "Enviando..." : "🎬 Enviar Vídeo"}
+              <input
+                type="file"
+                accept="video/mp4"
+                data-testid="upload-video"
+                onChange={handleUploadVideo}
+                disabled={enviandoFotos}
+                className="hidden"
+              />
+            </label>
+          </div>
           <input
             type="text"
             value={video}
             onChange={(e) => setVideo(e.target.value)}
-            placeholder="Ex: lancamentos/pininfarina/video-apresentacao.mp4"
+            placeholder="Preenchido pelo envio, ou cole um link direto terminado em .mp4"
+            aria-label="Endereço do vídeo"
             className="w-full input-luxury text-xs font-mono"
           />
+          {video.trim() && !/youtu\.?be|vimeo/i.test(video) && (
+            <video src={urlVideo(video.trim())} controls preload="metadata" className="w-full max-w-sm rounded-xl border border-ouro-suave bg-black" />
+          )}
         </div>
-
-        {/* Galeria de Fotos Adicionadas */}
-        {fotos.length === 0 ? (
-          <div className="py-12 border border-dashed border-ouro-suave rounded-xl text-center text-xs text-creme/50">
-            Nenhuma foto vinculada ainda. Clique no botão acima para selecionar e enviar fotos para o Cloudflare R2.
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {fotos.map((f, index) => {
-              const url = getUrlPublicaR2(f.key, 480);
-              return (
-                <div
-                  key={`${f.key}-${index}`}
-                  className={`bg-espresso border rounded-xl overflow-hidden relative group transition-all ${
-                    f.is_capa
-                      ? "border-ouro ring-2 ring-ouro/40"
-                      : "border-ouro-suave"
-                  }`}
-                >
-                  <div className="h-32 w-full bg-cafe relative">
-                    <img
-                      src={url}
-                      alt={f.alt || "Foto"}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src =
-                          "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&auto=format&fit=crop&q=80";
-                      }}
-                    />
-
-                    {f.is_capa && (
-                      <span className="absolute top-2 left-2 bg-ouro text-espresso text-[0.625rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded shadow">
-                        Capa Principal
-                      </span>
-                    )}
-
-                    {/* Botão de excluir foto */}
-                    <button
-                      type="button"
-                      onClick={() => removerFoto(index)}
-                      className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-red-600 text-white rounded-lg transition-colors cursor-pointer"
-                      title="Remover foto"
-                    >
-                      <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="p-2.5 space-y-2">
-                    <input
-                      type="text"
-                      value={f.alt}
-                      onChange={(e) => {
-                        const novoAlt = e.target.value;
-                        setFotos((prev) =>
-                          prev.map((item, i) =>
-                            i === index ? { ...item, alt: novoAlt } : item
-                          )
-                        );
-                      }}
-                      placeholder="Descrição da foto (Alt)"
-                      className="w-full bg-cafe border border-ouro-suave text-creme text-[0.6875rem] px-2 py-1 rounded outline-none"
-                    />
-
-                    {!f.is_capa && (
-                      <button
-                        type="button"
-                        onClick={() => definirCapa(index)}
-                        className="w-full py-1 text-[0.625rem] uppercase tracking-wider border border-ouro-suave rounded hover:bg-ouro/20 text-ouro-claro transition-colors cursor-pointer"
-                      >
-                        Definir como Capa
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* SEÇÃO: Visibilidade & Status */}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { linkCatalogo } from "@/lib/midia";
 
 export default function AdminLayout({
   children,
@@ -35,7 +36,8 @@ export default function AdminLayout({
             <div className="size-10 rounded-full border border-ouro-medio bg-espresso flex items-center justify-center text-ouro font-serif text-lg font-bold group-hover:border-ouro transition-colors">
               C
             </div>
-            <div>
+            {/* No celular só o monograma: o nome empurrava "Sair" para fora da tela. */}
+            <div className="hidden sm:block">
               <span className="block font-serif text-base tracking-wider text-ouro-claro font-semibold uppercase leading-tight">
                 Cirlene Robalinho
               </span>
@@ -68,7 +70,7 @@ export default function AdminLayout({
 
             {/* Ver Catálogo Público */}
             <a
-              href="http://localhost:3000"
+              href={linkCatalogo()}
               target="_blank"
               rel="noreferrer"
               className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-ouro/30 text-[0.6875rem] uppercase tracking-wider text-ouro-claro hover:bg-ouro/10 transition-colors"

@@ -6,6 +6,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CATEGORIAS_CONFIG, formatarPreco } from "@/lib/taxonomia";
 import type { ImovelCompleto, SlugCategoria } from "@/lib/types";
 import { avisarCatalogo } from "@/lib/avisar-catalogo";
+import { linkCatalogo } from "@/lib/midia";
 
 export default function PainelAdminPage() {
   const [imoveis, setImoveis] = useState<ImovelCompleto[]>([]);
@@ -16,6 +17,7 @@ export default function PainelAdminPage() {
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "publicados" | "ocultos">("todos");
   const [deletandoId, setDeletandoId] = useState<string | null>(null);
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [mensagemErro, setMensagemErro] = useState<string | null>(null);
 
   const carregarImoveis = async () => {
     setCarregando(true);
@@ -29,6 +31,7 @@ export default function PainelAdminPage() {
 
     if (error) {
       console.error("Erro ao carregar imóveis:", error);
+      setMensagemErro(`Não foi possível carregar os imóveis: ${error.message}`);
     } else {
       setImoveis((data as ImovelCompleto[]) || []);
     }
@@ -62,6 +65,7 @@ export default function PainelAdminPage() {
 
     if (error) {
       console.error("Erro ao alterar visibilidade:", error);
+      setMensagemErro(`"${imovel.titulo}" não mudou: ${error.message}`);
       // Reverte
       setImoveis((prev) =>
         prev.map((i) => (i.id === imovel.id ? { ...i, publicado: imovel.publicado } : i))
@@ -90,6 +94,7 @@ export default function PainelAdminPage() {
 
     if (error) {
       console.error("Erro ao excluir imóvel:", error);
+      setMensagemErro(`Não foi possível excluir: ${error.message}`);
     } else {
       setImoveis((prev) => prev.filter((i) => i.id !== deletandoId));
       mostrarSucesso(`Imóvel "${imovel?.titulo || ""}" excluído permanentemente.`);
@@ -121,6 +126,7 @@ export default function PainelAdminPage() {
 
     if (error) {
       console.error("Erro ao alterar ordem:", error);
+      setMensagemErro(`A ordem não mudou: ${error.message}`);
       carregarImoveis();
     } else {
       mostrarSucesso(`Posição de "${imovel.titulo}" ajustada para #${novaOrdem}.`);
@@ -150,7 +156,7 @@ export default function PainelAdminPage() {
 
       // Categoria
       if (filtroCategoria !== "todas") {
-        if (filtroCategoria === "investimentos") {
+        if (filtroCategoria === "business") {
           if (i.categoria !== "investimentos" && i.categoria !== "business") return false;
         } else if (i.categoria !== filtroCategoria) {
           return false;
@@ -178,6 +184,15 @@ export default function PainelAdminPage() {
 
   return (
     <div className="space-y-8">
+      {mensagemErro && (
+        <div role="alert" className="flex items-start justify-between gap-4 p-4 bg-red-950/60 border border-red-500/40 rounded-xl text-red-200 text-xs">
+          <span>{mensagemErro}</span>
+          <button type="button" onClick={() => setMensagemErro(null)} className="shrink-0 underline cursor-pointer">
+            Fechar
+          </button>
+        </div>
+      )}
+
       {/* Mensagem Toast de Sucesso */}
       {mensagemSucesso && (
         <div className="fixed bottom-6 right-6 z-50 bg-cafe border border-ouro text-ouro-claro px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in">
@@ -485,7 +500,7 @@ export default function PainelAdminPage() {
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <a
-                          href={`http://localhost:3000/imovel/${imovel.slug}`}
+                          href={linkCatalogo(`/imovel/${imovel.slug}`)}
                           target="_blank"
                           rel="noreferrer"
                           className="p-1.5 rounded-lg text-creme/60 hover:text-ouro-claro hover:bg-espresso transition-colors"

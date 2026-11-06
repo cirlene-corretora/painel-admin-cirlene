@@ -31,6 +31,8 @@ export interface FotoImovel {
   alt: string;
   ordem: number;
   is_capa: boolean;
+  /** "planta" vai para a seção Plantas da ficha, nunca para a galeria. */
+  tipo?: "foto" | "planta";
   lqip?: string | null;
   criado_em?: string;
 }
@@ -52,7 +54,7 @@ export interface ImovelCompleto {
   cidade: string;
   uf: string;
   /** Mapa da ficha. null = sem mapa. */
-  localizacao?: { endereco: string; lat: number; lng: number; precisao: "exata" | "aproximada" } | null;
+  localizacao?: { endereco: string; lat: number; lng: number; precisao: "exata" | "aproximada"; zoom?: number } | null;
   /** Card "Dados oficiais" ao lado do mapa. null = sem card. */
   dados_oficiais?: { titulo?: string; itens: string[]; texto?: string } | null;
   preco?: number | null;

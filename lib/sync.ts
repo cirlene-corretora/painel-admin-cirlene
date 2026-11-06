@@ -1,3 +1,5 @@
+import { CATALOGO_URL } from "@/lib/midia";
+
 /**
  * O mínimo de um imóvel para o catálogo saber em quais páginas ele aparece.
  * Espelho de `RegistroImovel` em catalogo-cirlene/lib/revalidacao.ts.
@@ -17,7 +19,6 @@ export interface RegistroImovel {
  * sob demanda e cirúrgica, o padrão do time desde a queda do MOVRA (23/10).
  */
 export async function sincronizarCatalogo(imoveis: RegistroImovel[]) {
-  const catalogoUrl = process.env.NEXT_PUBLIC_CATALOGO_URL || "http://localhost:3000";
   const secret = process.env.REVALIDATE_SECRET?.trim();
   if (!secret) {
     console.warn("[sync] REVALIDATE_SECRET não configurado; revalidação ignorada.");
@@ -25,7 +26,7 @@ export async function sincronizarCatalogo(imoveis: RegistroImovel[]) {
   }
 
   try {
-    const res = await fetch(new URL("/api/revalidate", catalogoUrl), {
+    const res = await fetch(new URL("/api/revalidate", CATALOGO_URL), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

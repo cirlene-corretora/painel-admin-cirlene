@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { ImovelForm } from "@/components/ImovelForm";
 import type { ImovelCompleto } from "@/lib/types";
 
@@ -11,7 +11,9 @@ export default async function EditarImovelPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = getSupabaseAdminClient();
+  // Com a sessão de quem está logado, passando pelo RLS: o painel não precisa
+  // de chave de serviço em produção.
+  const supabase = await getSupabaseServerClient();
 
   const { data: imovel, error } = await supabase
     .from("imoveis")

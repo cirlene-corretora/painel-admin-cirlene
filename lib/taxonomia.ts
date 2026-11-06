@@ -1,5 +1,9 @@
 import type { CategoriaInfo, SlugCategoria } from "./types";
 
+/**
+ * Espelho de CATEGORIAS em catalogo-cirlene/lib/data/catalogo.ts. Subcategoria
+ * que não existe lá vira imóvel sem página de listagem: mudou um, mude o outro.
+ */
 export const CATEGORIAS_CONFIG: CategoriaInfo[] = [
   {
     slug: "lancamentos",
@@ -18,28 +22,27 @@ export const CATEGORIAS_CONFIG: CategoriaInfo[] = [
     slug: "revendas",
     titulo: "Revendas",
     subcategorias: [
-      { slug: "casas", titulo: "Casas" },
-      { slug: "casas-em-condominio", titulo: "Casas em Condomínio" },
       { slug: "apartamentos", titulo: "Apartamentos" },
-      { slug: "terrenos", titulo: "Terrenos e Lotes" },
+      { slug: "casas-em-condominio", titulo: "Casas em Condomínio" },
+      { slug: "casas", titulo: "Casas" },
     ],
   },
   {
-    slug: "investimentos",
-    titulo: "Investimentos / Business",
+    slug: "business",
+    titulo: "Business",
     subcategorias: [
       { slug: "salas-corporativas", titulo: "Salas Corporativas" },
-      { slug: "br-log", titulo: "Galpões & Logística (BR LOG)" },
+      { slug: "br-log", titulo: "BR LOG" },
+      { slug: "consultorios", titulo: "Consultórios" },
       { slug: "renda-de-aluguel", titulo: "Renda de Aluguel" },
     ],
   },
   {
     slug: "fazendas",
-    titulo: "Fazendas & Agronegócio",
+    titulo: "Fazendas",
     subcategorias: [
-      { slug: "pecuaria", titulo: "Fazendas de Pecuária" },
-      { slug: "lavoura", titulo: "Fazendas de Lavoura / Grãos" },
-      { slug: "mistas", titulo: "Fazendas Mistas" },
+      { slug: "pecuaria", titulo: "Pecuária" },
+      { slug: "lavoura", titulo: "Lavoura" },
     ],
   },
 ];

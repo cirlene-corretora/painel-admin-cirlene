@@ -7,7 +7,9 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 function FormularioLogin() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/admin";
+  // Só caminho interno: "//site.com" ou "https://…" levaria a senha digitada a parecer de outro lugar.
+  const destino = searchParams.get("redirect") || "";
+  const redirectUrl = /^\/(?!\/)/.test(destino) ? destino : "/admin";
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
